@@ -29,11 +29,7 @@ function ChatContent() {
   const schoolName = searchParams.get('schoolName') || ''
 
   useEffect(() => {
-    if (!geminiKey) {
-      router.replace('/settings')
-      return
-    }
-    // 필터 조건으로 데이터 로드
+    if (!geminiKey) { router.replace('/settings'); return }
     const params = new URLSearchParams()
     if (schoolName) params.set('schoolName', schoolName)
     fetch(`/api/seoul?${params.toString()}`)
@@ -44,8 +40,8 @@ function ChatContent() {
         if (establishment) rows = rows.filter((s) => s.FNDN_SE === establishment)
         if (district) rows = rows.filter((s) => s.CMPTNC_OGNZ_NM === district)
         setSchools(rows)
-        // eslint-disable-next-line react-hooks/exhaustive-deps
       })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geminiKey, router, schoolName, schoolType, establishment, district])
 
   useEffect(() => {
@@ -66,22 +62,13 @@ function ChatContent() {
     setMessages(next)
     setInput('')
     setStreaming(true)
-
-    const assistantMsg: ChatMessage = { role: 'assistant', content: '' }
-    setMessages([...next, assistantMsg])
+    setMessages([...next, { role: 'assistant', content: '' }])
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gemini-Key': geminiKey,
-        },
-        body: JSON.stringify({
-          messages: next,
-          data: schools,
-          summary: buildSummary(schools),
-        }),
+        headers: { 'Content-Type': 'application/json', 'X-Gemini-Key': geminiKey },
+        body: JSON.stringify({ messages: next, data: schools, summary: buildSummary(schools) }),
       })
 
       if (!res.ok || !res.body) {
@@ -92,7 +79,6 @@ function ChatContent() {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let full = ''
-
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -107,30 +93,29 @@ function ChatContent() {
     }
   }
 
-  // 배너 레이블 조합
   const bannerParts = [
     schoolType || '전체 학교종류',
     establishment || '전체 설립구분',
     district || '전체 교육지원청',
-  ].filter(Boolean)
+  ]
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* 헤더 */}
       <header className="bg-white border-b px-4 py-3 shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <button onClick={() => router.push('/')} className="text-sm text-gray-500 hover:text-gray-700">
+          <button onClick={() => router.push('/')} className="text-sm text-gray-700 font-medium hover:text-gray-900">
             ← 메인으로
           </button>
           <div className="text-center">
             <p className="text-xs text-gray-500">현재 분석 중인 데이터</p>
-            <p className="text-sm font-semibold text-gray-800">
+            <p className="text-sm font-semibold text-gray-900">
               {bannerParts.join(' · ')} · {schools.length}개교
             </p>
           </div>
           <button
             onClick={() => setMessages([])}
-            className="text-xs text-gray-400 hover:text-gray-600 border rounded px-2 py-1"
+            className="text-xs text-gray-700 font-medium hover:text-gray-900 border rounded px-2 py-1"
           >
             대화 초기화
           </button>
@@ -141,9 +126,9 @@ function ChatContent() {
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-3xl mx-auto space-y-4">
           {messages.length === 0 && (
-            <div className="text-center text-gray-400 py-16">
+            <div className="text-center text-gray-500 py-16">
               <p className="text-4xl mb-3">🤖</p>
-              <p className="text-sm">서울시 학교 데이터에 대해 질문해 보세요!</p>
+              <p className="text-sm font-medium">서울시 학교 데이터에 대해 질문해 보세요!</p>
             </div>
           )}
 
@@ -153,7 +138,7 @@ function ChatContent() {
                 className={`max-w-[75%] px-4 py-3 rounded-2xl text-sm whitespace-pre-wrap leading-relaxed ${
                   m.role === 'user'
                     ? 'bg-blue-600 text-white rounded-br-sm'
-                    : 'bg-white border text-gray-800 rounded-bl-sm shadow-sm'
+                    : 'bg-white border text-gray-900 rounded-bl-sm shadow-sm'
                 }`}
               >
                 {m.content}
@@ -175,7 +160,7 @@ function ChatContent() {
               <button
                 key={q}
                 onClick={() => sendMessage(q)}
-                className="text-xs border rounded-full px-3 py-1.5 text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
+                className="text-xs border rounded-full px-3 py-1.5 text-gray-800 font-medium hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors"
               >
                 {q}
               </button>
@@ -194,7 +179,7 @@ function ChatContent() {
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
             placeholder="학교 데이터에 대해 질문하세요..."
             disabled={streaming}
-            className="flex-1 border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50"
+            className="flex-1 border rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:bg-gray-50"
           />
           <button
             onClick={() => sendMessage(input)}
@@ -211,7 +196,7 @@ function ChatContent() {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-screen text-gray-500">로딩 중...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-screen text-gray-600 font-medium">로딩 중...</div>}>
       <ChatContent />
     </Suspense>
   )

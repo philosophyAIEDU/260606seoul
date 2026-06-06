@@ -10,9 +10,10 @@ type SortKey = 'SCHL_NM' | 'FNDN_YMD'
 
 interface Props {
   schools: SchoolInfo[]
+  onRowClick?: (school: SchoolInfo) => void
 }
 
-export default function SchoolTable({ schools }: Props) {
+export default function SchoolTable({ schools, onRowClick }: Props) {
   const [page, setPage] = useState(1)
   const [sortKey, setSortKey] = useState<SortKey>('SCHL_NM')
   const [sortAsc, setSortAsc] = useState(true)
@@ -64,7 +65,11 @@ export default function SchoolTable({ schools }: Props) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {slice.map((s) => (
-              <tr key={s.STD_SCHL_CD} className="hover:bg-gray-50 transition-colors">
+              <tr
+                key={s.STD_SCHL_CD}
+                className="hover:bg-blue-50 transition-colors cursor-pointer"
+                onClick={() => onRowClick?.(s)}
+              >
                 <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">{s.SCHL_NM}</td>
                 <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{s.SCHL_KND_NM}</td>
                 <td className="px-4 py-3">
