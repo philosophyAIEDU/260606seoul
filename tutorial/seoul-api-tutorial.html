@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>서울 공공 API 활용 튜토리얼</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+    background: #0f172a;
+    color: #1e293b;
+    overflow: hidden;
+  }
+
+  /* 슬라이드 컨테이너 */
+  .slides { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 60px 80px;
+    flex-direction: column;
+    justify-content: center;
+    position: absolute;
+    top: 0; left: 0;
+    animation: fadeIn 0.4s ease;
+  }
+  .slide.active { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* 슬라이드 테마 */
+  .slide-cover    { background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%); color: white; }
+  .slide-blue     { background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); }
+  .slide-green    { background: linear-gradient(135deg, #d1fae5 0%, #f0fdf4 100%); }
+  .slide-purple   { background: linear-gradient(135deg, #ede9fe 0%, #faf5ff 100%); }
+  .slide-orange   { background: linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%); }
+  .slide-gray     { background: linear-gradient(135deg, #f1f5f9 0%, #f8fafc 100%); }
+  .slide-dark     { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white; }
+
+  /* 헤더 */
+  .slide-num {
+    position: absolute;
+    top: 24px; right: 40px;
+    font-size: 13px;
+    opacity: 0.4;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+  .tag-blue   { background: #dbeafe; color: #1d4ed8; }
+  .tag-green  { background: #d1fae5; color: #065f46; }
+  .tag-purple { background: #ede9fe; color: #5b21b6; }
+  .tag-orange { background: #ffedd5; color: #9a3412; }
+  .tag-white  { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+
+  h1 { font-size: 48px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+  h2 { font-size: 36px; font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+  h3 { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+  .subtitle { font-size: 20px; opacity: 0.75; font-weight: 400; line-height: 1.6; }
+  .lead { font-size: 18px; line-height: 1.8; color: #374151; margin-bottom: 24px; }
+
+  /* 카드 그리드 */
+  .cards { display: grid; gap: 20px; }
+  .cards-2 { grid-template-columns: 1fr 1fr; }
+  .cards-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .cards-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+  .card {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .card-icon { font-size: 32px; margin-bottom: 12px; }
+  .card h3 { font-size: 16px; color: #111827; margin-bottom: 6px; }
+  .card p  { font-size: 13px; color: #6b7280; line-height: 1.6; }
+  .card.accent { background: #1d4ed8; color: white; }
+  .card.accent h3, .card.accent p { color: white; }
+
+  /* 스텝 */
+  .steps { display: flex; flex-direction: column; gap: 16px; }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    background: white;
+    border-radius: 14px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .step-num {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: #1d4ed8;
+    color: white;
+    font-weight: 800;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-body h3 { font-size: 16px; color: #111827; margin-bottom: 4px; }
+  .step-body p  { font-size: 13px; color: #6b7280; line-height: 1.6; }
+  .step-body code {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #0f172a;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+
+  /* 코드 블록 */
+  .code-box {
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 14px;
+    padding: 24px 28px;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.8;
+    margin: 16px 0;
+  }
+  .code-box .comment { color: #64748b; }
+  .code-box .key { color: #7dd3fc; }
+  .code-box .val { color: #86efac; }
+  .code-box .str { color: #fda4af; }
+
+  /* URL 박스 */
+  .url-box {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-radius: 12px;
+    padding: 18px 24px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    margin: 12px 0;
+    word-break: break-all;
+  }
+  .url-box .hl { color: #fbbf24; font-weight: 700; }
+
+  /* 하이라이트 박스 */
+  .highlight {
+    background: #eff6ff;
+    border-left: 4px solid #1d4ed8;
+    border-radius: 0 10px 10px 0;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-size: 14px;
+    color: #1e3a5f;
+    line-height: 1.7;
+  }
+  .highlight.warn {
+    background: #fff7ed;
+    border-color: #f97316;
+    color: #7c2d12;
+  }
+  .highlight.success {
+    background: #f0fdf4;
+    border-color: #16a34a;
+    color: #14532d;
+  }
+
+  /* 두 컬럼 */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+  .two-col.w60 { grid-template-columns: 3fr 2fr; }
+
+  /* 큰 숫자 */
+  .big-stat { text-align: center; }
+  .big-stat .num { font-size: 56px; font-weight: 800; color: #1d4ed8; }
+  .big-stat .label { font-size: 15px; color: #6b7280; margin-top: 4px; }
+
+  ul { list-style: none; }
+  ul li { padding: 6px 0; font-size: 15px; color: #374151; line-height: 1.6; }
+  ul li::before { content: '▸ '; color: #1d4ed8; font-weight: 700; }
+  .dark ul li { color: #cbd5e1; }
+  .dark ul li::before { color: #60a5fa; }
+
+  /* 네비게이션 */
+  .nav {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 50px;
+    padding: 10px 20px;
+    z-index: 100;
+  }
+  .nav button {
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 38px; height: 38px;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    transition: all 0.2s;
+  }
+  .nav button:hover { background: white; transform: scale(1.1); }
+  .nav button:disabled { opacity: 0.3; cursor: default; transform: none; }
+  .nav .progress {
+    font-size: 13px;
+    color: white;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: center;
+  }
+
+  /* 도트 인디케이터 */
+  .dots {
+    position: fixed;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+  }
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dot.active { background: white; transform: scale(1.4); }
+
+  /* 배지 */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    margin: 2px;
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: white; border-radius: 12px; overflow: hidden; }
+  th { background: #1e3a5f; color: white; padding: 12px 16px; text-align: left; font-size: 12px; letter-spacing: 0.5px; }
+  td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; color: #374151; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+
+  .cover-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.85);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 28px;
+  }
+</style>
+</head>
+<body>
+
+<div class="slides">
+
+  <!-- 슬라이드 1: 표지 -->
+  <div class="slide slide-cover active">
+    <span class="slide-num">1 / 12</span>
+    <div class="cover-badge">📚 입문자를 위한 공공 API 튜토리얼</div>
+    <h1 style="font-size:52px; color:white;">서울 공공 API로<br/>학교 정보 서비스<br/>만들기</h1>
+    <p class="subtitle" style="color:rgba(255,255,255,0.7); margin-top:24px; max-width:580px;">
+      코딩을 잘 몰라도 괜찮습니다.<br/>
+      서울 열린데이터광장 API부터 AI 채팅까지,<br/>
+      단계별로 따라오세요.
+    </p>
+    <div style="margin-top:48px; display:flex; gap:16px; flex-wrap:wrap;">
+      <span class="badge" style="background:rgba(96,165,250,0.2); color:#93c5fd; border:1px solid rgba(96,165,250,0.3);">🏫 서울시 학교 610개</span>
+      <span class="badge" style="background:rgba(96,165,250,0.2); color:#93c5fd; border:1px solid rgba(96,165,250,0.3);">🤖 Gemini AI 연동</span>
+      <span class="badge" style="background:rgba(96,165,250,0.2); color:#93c5fd; border:1px solid rgba(96,165,250,0.3);">📊 차트 시각화</span>
+      <span class="badge" style="background:rgba(96,165,250,0.2); color:#93c5fd; border:1px solid rgba(96,165,250,0.3);">🔑 무료 API 키</span>
+    </div>
+  </div>
+
+  <!-- 슬라이드 2: 공공 API란? -->
+  <div class="slide slide-blue">
+    <span class="slide-num">2 / 12</span>
+    <div class="tag tag-blue">STEP 01</div>
+    <h2>공공 API가 뭔가요?</h2>
+    <p class="lead">정부나 공공기관이 데이터를 누구나 가져갈 수 있도록<br/>인터넷에 열어둔 창구입니다.</p>
+    <div class="cards cards-3" style="margin-top:8px;">
+      <div class="card">
+        <div class="card-icon">🏪</div>
+        <h3>편의점 비유</h3>
+        <p>편의점에서 물건을 사듯,<br/>API에서 데이터를 가져옵니다.<br/>돈 대신 <strong>API 키</strong>가 필요합니다.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔑</div>
+        <h3>API 키란?</h3>
+        <p>"나는 허가받은 사람이에요"라는<br/>신분증 역할을 하는 긴 문자열입니다.<br/>무료로 발급받을 수 있습니다.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">📦</div>
+        <h3>받아오는 것</h3>
+        <p>학교명, 주소, 전화번호 등<br/>정형화된 데이터(JSON/XML)를<br/>프로그램으로 받아옵니다.</p>
+      </div>
+    </div>
+    <div class="highlight" style="margin-top:20px;">
+      💡 서울 열린데이터광장(data.seoul.go.kr)에서는 교통·환경·교육·복지 등 2,000개 이상의 공공 데이터셋을 무료로 제공합니다.
+    </div>
+  </div>
+
+  <!-- 슬라이드 3: 서울 API 키 발급 -->
+  <div class="slide slide-green">
+    <span class="slide-num">3 / 12</span>
+    <div class="tag tag-green">STEP 02</div>
+    <h2>서울 API 키 발급받기</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>서울 열린데이터광장 접속</h3>
+          <p>브라우저 주소창에 입력하세요</p>
+          <code>data.seoul.go.kr</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>회원가입 후 로그인</h3>
+          <p>이메일로 간단하게 가입 가능합니다. 소셜 로그인(카카오/네이버)도 지원합니다.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>인증키 발급</h3>
+          <p>로그인 후 → 마이페이지 → 인증키 발급/관리 → <strong>인증키 신청</strong> 버튼 클릭</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>키 복사 & 보관</h3>
+          <p>발급된 키를 복사해서 안전한 곳에 저장하세요. 이 키는 <strong>절대 공개하면 안 됩니다.</strong></p>
+          <code>예시: 7559776558746f74...</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 4: API URL 구조 이해 -->
+  <div class="slide slide-purple">
+    <span class="slide-num">4 / 12</span>
+    <div class="tag tag-purple">STEP 03</div>
+    <h2>API 주소(URL) 구조 이해하기</h2>
+    <p class="lead">API를 호출하는 주소는 마치 <strong>편지 주소</strong>처럼 구조가 있습니다.</p>
+    <div class="url-box">
+      http://openapi.seoul.go.kr:8088/<span class="hl">{API키}</span>/json/neisSchoolInfoJS/<span class="hl">{시작번호}</span>/<span class="hl">{끝번호}</span>/<span class="hl">{학교명}</span>
+    </div>
+    <div class="cards cards-3" style="margin-top:20px;">
+      <div class="card">
+        <h3>🔑 API키</h3>
+        <p>발급받은 인증키를 넣습니다.<br/>이걸로 "나 허가받았어요" 확인</p>
+      </div>
+      <div class="card">
+        <h3>📋 시작/끝번호</h3>
+        <p>데이터를 몇 번째부터 몇 번째까지 받을지 지정합니다.<br/>전체: <strong>1 ~ 610</strong></p>
+      </div>
+      <div class="card">
+        <h3>🔍 학교명</h3>
+        <p>특정 학교를 검색할 때 씁니다.<br/>전체 조회는 공백(%20)을 넣습니다.</p>
+      </div>
+    </div>
+    <div class="highlight" style="margin-top:16px;">
+      실제 예시: <code style="background:#ddd6fe; color:#4c1d95; padding:2px 8px; border-radius:6px;">http://openapi.seoul.go.kr:8088/나의키/json/neisSchoolInfoJS/1/10/%20</code><br/>
+      → 전체 학교 중 1~10번째 데이터를 JSON 형식으로 받아옵니다.
+    </div>
+  </div>
+
+  <!-- 슬라이드 5: 응답 데이터 구조 -->
+  <div class="slide slide-gray">
+    <span class="slide-num">5 / 12</span>
+    <div class="tag tag-blue">STEP 04</div>
+    <h2>받아온 데이터 생김새</h2>
+    <p class="lead">API가 돌려주는 데이터는 이렇게 생겼습니다. JSON 형식이라고 부릅니다.</p>
+    <div class="two-col w60">
+      <div class="code-box">
+        <span class="comment">// API 응답 예시 (JSON)</span><br/>
+        {<br/>
+        &nbsp;&nbsp;<span class="key">"neisSchoolInfoJS"</span>: {<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"list_total_count"</span>: <span class="val">610</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"RESULT"</span>: {<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"CODE"</span>: <span class="str">"INFO-000"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"MESSAGE"</span>: <span class="str">"정상"</span><br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;},<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"row"</span>: [<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"SCHL_NM"</span>: <span class="str">"광진초등학교"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"SCHL_KND_NM"</span>: <span class="str">"초등학교"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"FNDN_SE"</span>: <span class="str">"공립"</span>,<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="key">"ROAD_NM_ADDR"</span>: <span class="str">"서울시..."</span><br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;]<br/>
+        &nbsp;&nbsp;}<br/>
+        }
+      </div>
+      <div>
+        <h3 style="margin-bottom:16px;">주요 필드 설명</h3>
+        <table>
+          <tr><th>필드명</th><th>의미</th></tr>
+          <tr><td>SCHL_NM</td><td>학교명</td></tr>
+          <tr><td>SCHL_KND_NM</td><td>학교종류</td></tr>
+          <tr><td>FNDN_SE</td><td>공립/사립</td></tr>
+          <tr><td>CMPTNC_OGNZ_NM</td><td>교육지원청</td></tr>
+          <tr><td>ROAD_NM_ADDR</td><td>도로명주소</td></tr>
+          <tr><td>FNDN_YMD</td><td>설립일(YYYYMMDD)</td></tr>
+          <tr><td>HMPG_ADDR</td><td>홈페이지 URL</td></tr>
+        </table>
+        <div class="highlight" style="margin-top:12px;">
+          ✅ RESULT.CODE가 <strong>"INFO-000"</strong>이면 정상입니다. 다른 코드면 에러입니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 6: 보안 규칙 -->
+  <div class="slide slide-orange">
+    <span class="slide-num">6 / 12</span>
+    <div class="tag tag-orange">⚠️ 중요 보안</div>
+    <h2>API 키는 어디에 두어야 할까요?</h2>
+    <p class="lead">API 키가 노출되면 남이 내 명의로 데이터를 마음대로 가져갑니다. 반드시 숨겨야 합니다.</p>
+    <div class="cards cards-2" style="margin-top:8px;">
+      <div class="card" style="border: 2px solid #ef4444;">
+        <div class="card-icon">❌</div>
+        <h3 style="color:#dc2626;">절대 하면 안 되는 것</h3>
+        <ul style="margin-top:8px;">
+          <li style="font-size:13px; color:#374151;">브라우저 코드(프론트엔드)에 직접 넣기</li>
+          <li style="font-size:13px; color:#374151;">GitHub에 .env 파일 올리기</li>
+          <li style="font-size:13px; color:#374151;">카카오톡, 이메일로 공유하기</li>
+          <li style="font-size:13px; color:#374151;">URL에 그냥 넣어서 공개하기</li>
+        </ul>
+      </div>
+      <div class="card" style="border: 2px solid #16a34a;">
+        <div class="card-icon">✅</div>
+        <h3 style="color:#15803d;">올바른 방법</h3>
+        <ul style="margin-top:8px;">
+          <li style="font-size:13px; color:#374151;"><strong>.env.local</strong> 파일에 저장 (Git 제외)</li>
+          <li style="font-size:13px; color:#374151;">서버(API Route)에서만 읽기</li>
+          <li style="font-size:13px; color:#374151;">Vercel 환경변수 설정창에 입력</li>
+          <li style="font-size:13px; color:#374151;">클라이언트에 절대 내보내지 않기</li>
+        </ul>
+      </div>
+    </div>
+    <div class="code-box" style="margin-top:20px; font-size:13px;">
+      <span class="comment"># .env.local 파일 (이 파일은 Git에 올라가지 않습니다)</span><br/>
+      <span class="key">SEOUL_API_KEY</span>=<span class="str">여기에_발급받은_키_입력</span>
+    </div>
+  </div>
+
+  <!-- 슬라이드 7: Next.js 프로젝트 구조 -->
+  <div class="slide slide-blue">
+    <span class="slide-num">7 / 12</span>
+    <div class="tag tag-blue">STEP 05</div>
+    <h2>Next.js 프로젝트 구조</h2>
+    <p class="lead">이 서비스는 다음과 같은 폴더 구조로 이루어져 있습니다.</p>
+    <div class="two-col">
+      <div class="code-box" style="font-size:13px;">
+        260606seoul/<br/>
+        ├── <span class="key">app/</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">page.tsx</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← 메인 페이지</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">settings/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← Gemini 키 설정</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">chat/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← AI 채팅 페이지</span><br/>
+        │&nbsp;&nbsp; └── <span class="key">api/</span><br/>
+        │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ├── <span class="str">seoul/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← 서울 API 프록시</span><br/>
+        │&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; └── <span class="str">chat/</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← Gemini AI 라우트</span><br/>
+        ├── <span class="key">components/</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">SchoolCharts.tsx</span>&nbsp;<span class="comment">← 차트</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">SchoolTable.tsx</span>&nbsp;&nbsp;<span class="comment">← 테이블</span><br/>
+        │&nbsp;&nbsp; └── <span class="str">SchoolModal.tsx</span>&nbsp;&nbsp;<span class="comment">← 상세 모달</span><br/>
+        ├── <span class="key">lib/</span><br/>
+        │&nbsp;&nbsp; ├── <span class="str">types.ts</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← 데이터 타입</span><br/>
+        │&nbsp;&nbsp; └── <span class="str">GeminiKeyContext.tsx</span><br/>
+        └── <span class="val">.env.local</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">← API 키 (비공개)</span>
+      </div>
+      <div>
+        <h3 style="margin-bottom:16px;">핵심 개념</h3>
+        <div class="card" style="margin-bottom:12px;">
+          <h3>🖥️ app/api/ 폴더</h3>
+          <p>서버에서만 실행되는 코드.<br/>여기서만 API 키를 사용합니다.</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h3>📱 app/page.tsx</h3>
+          <p>사용자 브라우저에서 보이는 화면.<br/>API 키를 절대 접근할 수 없습니다.</p>
+        </div>
+        <div class="card">
+          <h3>🧩 components/ 폴더</h3>
+          <p>차트, 테이블 등 재사용 가능한<br/>화면 조각들을 모아둔 곳입니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 8: 서버 프록시 패턴 -->
+  <div class="slide slide-dark">
+    <span class="slide-num">8 / 12</span>
+    <div class="tag tag-white">STEP 06</div>
+    <h2 style="color:white;">서버 프록시 패턴이란?</h2>
+    <p class="subtitle" style="margin-bottom:28px;">클라이언트가 직접 외부 API를 호출하면 키가 노출됩니다.<br/>서버를 중간에 두어 키를 숨기는 방법입니다.</p>
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center;">
+      <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:16px; padding:20px 28px; text-align:center; color:white;">
+        <div style="font-size:32px; margin-bottom:8px;">👤</div>
+        <div style="font-size:14px; font-weight:700;">사용자 브라우저</div>
+        <div style="font-size:11px; color:#94a3b8; margin-top:4px;">API 키 없음</div>
+      </div>
+      <div style="font-size:28px; color:#60a5fa;">→</div>
+      <div style="background:#1d4ed8; border-radius:16px; padding:20px 28px; text-align:center; color:white;">
+        <div style="font-size:32px; margin-bottom:8px;">⚙️</div>
+        <div style="font-size:14px; font-weight:700;">Next.js 서버</div>
+        <div style="font-size:11px; color:#bfdbfe; margin-top:4px;">app/api/seoul/route.ts<br/>🔑 API 키 보관</div>
+      </div>
+      <div style="font-size:28px; color:#60a5fa;">→</div>
+      <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:16px; padding:20px 28px; text-align:center; color:white;">
+        <div style="font-size:32px; margin-bottom:8px;">🏛️</div>
+        <div style="font-size:14px; font-weight:700;">서울 공공 API</div>
+        <div style="font-size:11px; color:#94a3b8; margin-top:4px;">openapi.seoul.go.kr:8088</div>
+      </div>
+    </div>
+    <div class="code-box" style="margin-top:28px; font-size:13px;">
+      <span class="comment">// app/api/seoul/route.ts — 서버에서만 실행</span><br/>
+      const apiKey = <span class="key">process.env</span>.<span class="val">SEOUL_API_KEY</span>&nbsp;&nbsp;<span class="comment">// 환경변수에서 읽기</span><br/>
+      const url = `http://openapi.seoul.go.kr:8088/<span class="str">${apiKey}</span>/json/...`<br/>
+      const res = await <span class="key">fetch</span>(url)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">// 서버가 호출</span>
+    </div>
+  </div>
+
+  <!-- 슬라이드 9: Gemini AI 연동 -->
+  <div class="slide slide-purple">
+    <span class="slide-num">9 / 12</span>
+    <div class="tag tag-purple">STEP 07</div>
+    <h2>Gemini AI와 데이터 연결하기</h2>
+    <p class="lead">학교 데이터 통계를 AI에게 먼저 알려주면, AI가 정확한 답변을 할 수 있습니다.</p>
+    <div class="two-col">
+      <div>
+        <h3 style="margin-bottom:12px;">AI에게 전달하는 정보</h3>
+        <div class="code-box" style="font-size:12px; line-height:2;">
+          <span class="comment">=== 사전 계산된 통계 ===</span><br/>
+          총 학교 수: <span class="val">610</span>개교<br/>
+          [학교종류별]<br/>
+          &nbsp;&nbsp;초등학교: <span class="val">304</span>개교<br/>
+          &nbsp;&nbsp;중학교: <span class="val">128</span>개교<br/>
+          &nbsp;&nbsp;고등학교: <span class="val">168</span>개교<br/>
+          [설립구분별]<br/>
+          &nbsp;&nbsp;공립: <span class="val">486</span>개교<br/>
+          &nbsp;&nbsp;사립: <span class="val">124</span>개교<br/>
+          [가장 오래된 학교]<br/>
+          &nbsp;&nbsp;<span class="str">경기고등학교</span> (1900년)<br/>
+          ...전체 학교명 목록...
+        </div>
+      </div>
+      <div>
+        <h3 style="margin-bottom:12px;">핵심 포인트</h3>
+        <div class="card" style="margin-bottom:12px;">
+          <h3>🧮 미리 계산</h3>
+          <p>원시 데이터(JSON)가 아닌 <strong>집계된 통계</strong>를 전달 → AI가 숫자를 틀릴 가능성 대폭 감소</p>
+        </div>
+        <div class="card" style="margin-bottom:12px;">
+          <h3>🔒 키 전달 방식</h3>
+          <p>Gemini 키는 URL/응답 body가 아닌<br/><strong>X-Gemini-Key 헤더</strong>로만 서버에 전달</p>
+        </div>
+        <div class="card">
+          <h3>📡 스트리밍</h3>
+          <p>AI 답변을 한 글자씩 실시간으로<br/>화면에 타이핑하듯 표시합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 10: 실행 방법 -->
+  <div class="slide slide-green">
+    <span class="slide-num">10 / 12</span>
+    <div class="tag tag-green">STEP 08</div>
+    <h2>내 컴퓨터에서 실행하기</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>저장소 받아오기</h3>
+          <code>git clone https://github.com/philosophyAIEDU/260606seoul.git</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>패키지 설치</h3>
+          <code>cd 260606seoul &nbsp;&nbsp; npm install</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>API 키 설정</h3>
+          <p>프로젝트 폴더에 <strong>.env.local</strong> 파일을 만들고 아래 내용 입력</p>
+          <code>SEOUL_API_KEY=발급받은_서울_API_키</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>서버 실행 후 브라우저 접속</h3>
+          <code>npm run dev &nbsp;&nbsp; → &nbsp;&nbsp; http://localhost:3000</code>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Gemini 키 입력</h3>
+          <p>브라우저에서 <strong>/settings</strong> 페이지 → Gemini API 키 입력 후 저장</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 11: Vercel 배포 -->
+  <div class="slide slide-blue">
+    <span class="slide-num">11 / 12</span>
+    <div class="tag tag-blue">STEP 09</div>
+    <h2>Vercel로 인터넷에 공개하기</h2>
+    <p class="lead">내 컴퓨터에서만 보이던 서비스를 전 세계 누구나 볼 수 있게 만드는 과정입니다.</p>
+    <div class="cards cards-2" style="margin-top:8px;">
+      <div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <h3>vercel.com 접속 후 GitHub 로그인</h3>
+              <p>GitHub 계정으로 로그인하면 저장소가 자동 연결됩니다.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <h3>저장소 선택 후 배포</h3>
+              <p><strong>philosophyAIEDU/260606seoul</strong> 선택 → Deploy 클릭</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <h3>환경변수 설정</h3>
+              <p>Settings → Environment Variables → SEOUL_API_KEY 추가</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card accent" style="margin-bottom:16px;">
+          <div class="card-icon">🚀</div>
+          <h3>자동 배포</h3>
+          <p>GitHub에 코드를 올리면 Vercel이 자동으로 새 버전을 배포합니다. 별도 작업 불필요!</p>
+        </div>
+        <div class="highlight warn">
+          ⚠️ SEOUL_API_KEY는 반드시 Vercel 환경변수에 입력해야 합니다. 코드에 직접 쓰면 절대 안 됩니다.
+        </div>
+        <div class="highlight success" style="margin-top:12px;">
+          ✅ 배포 완료 시 yourproject.vercel.app 형태의 주소가 생성됩니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 슬라이드 12: 마무리 -->
+  <div class="slide slide-cover">
+    <span class="slide-num">12 / 12</span>
+    <h2 style="color:white; font-size:42px; margin-bottom:24px;">🎉 이걸 배웠습니다!</h2>
+    <div class="cards cards-2" style="margin-top:8px; max-width:700px;">
+      <div class="card" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);">
+        <div class="card-icon">🔑</div>
+        <h3 style="color:white;">공공 API 키 발급</h3>
+        <p style="color:rgba(255,255,255,0.65);">서울 열린데이터광장에서 무료로 발급, 안전하게 보관하는 방법</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);">
+        <div class="card-icon">🛡️</div>
+        <h3 style="color:white;">서버 프록시 패턴</h3>
+        <p style="color:rgba(255,255,255,0.65);">API 키를 서버에만 두어 외부 노출 없이 안전하게 사용하는 구조</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);">
+        <div class="card-icon">📊</div>
+        <h3 style="color:white;">데이터 시각화</h3>
+        <p style="color:rgba(255,255,255,0.65);">받아온 데이터를 차트·테이블로 표현해 인사이트 도출</p>
+      </div>
+      <div class="card" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);">
+        <div class="card-icon">🤖</div>
+        <h3 style="color:white;">AI와 데이터 연결</h3>
+        <p style="color:rgba(255,255,255,0.65);">통계를 사전 계산해 AI에 전달, 자연어로 데이터를 탐색</p>
+      </div>
+    </div>
+    <p style="color:rgba(255,255,255,0.6); margin-top:32px; font-size:15px;">
+      같은 방법으로 서울의 다른 공공 데이터(버스·지하철·공원·병원...)도 활용할 수 있습니다. 🚀
+    </p>
+  </div>
+
+</div>
+
+<!-- 네비게이션 -->
+<div class="nav">
+  <button id="btn-prev" onclick="prevSlide()" disabled>‹</button>
+  <span class="progress" id="progress">1 / 12</span>
+  <button id="btn-next" onclick="nextSlide()">›</button>
+</div>
+
+<!-- 도트 -->
+<div class="dots" id="dots"></div>
+
+<script>
+  const slides = document.querySelectorAll('.slide')
+  const total = slides.length
+  let current = 0
+
+  const dotsEl = document.getElementById('dots')
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div')
+    d.className = 'dot' + (i === 0 ? ' active' : '')
+    d.onclick = () => goTo(i)
+    dotsEl.appendChild(d)
+  }
+
+  function goTo(n) {
+    slides[current].classList.remove('active')
+    document.querySelectorAll('.dot')[current].classList.remove('active')
+    current = n
+    slides[current].classList.add('active')
+    document.querySelectorAll('.dot')[current].classList.add('active')
+    document.getElementById('progress').textContent = `${current + 1} / ${total}`
+    document.getElementById('btn-prev').disabled = current === 0
+    document.getElementById('btn-next').disabled = current === total - 1
+  }
+
+  function nextSlide() { if (current < total - 1) goTo(current + 1) }
+  function prevSlide() { if (current > 0) goTo(current - 1) }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') nextSlide()
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   prevSlide()
+  })
+</script>
+</body>
+</html>
