@@ -1,132 +1,158 @@
 'use client'
-// Gemini API 키 설정 페이지 (/settings)
+// 설정 페이지: 서울 OpenAPI 인증키 + Gemini API 키 입력·검증·삭제 (/settings)
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useGeminiKey } from '@/lib/GeminiKeyContext'
+import { useKeys } from '@/lib/keys'
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { geminiKey, setGeminiKey, clearGeminiKey } = useGeminiKey()
+  const { seoulKey, geminiKey, setSeoulKey, setGeminiKey, clearSeoulKey, clearGeminiKey } = useKeys()
 
-  const [inputKey, setInputKey] = useState('')
-  const [status, setStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
-  const [hasSavedKey, setHasSavedKey] = useState(false)
+  const [seoulInput, setSeoulInput] = useState('')
+  const [geminiInput, setGeminiInput] = useState('')
+  const [geminiStatus, setGeminiStatus] = useState<'idle' | 'testing' | 'ok' | 'error'>('idle')
+  const [geminiError, setGeminiError] = useState('')
 
-  useEffect(() => {
-    setHasSavedKey(!!geminiKey)
-  }, [geminiKey])
+  function saveSeoul() {
+    if (!seoulInput.trim()) return
+    setSeoulKey(seoulInput.trim())
+    setSeoulInput('')
+  }
 
-  async function handleVerify() {
-    if (!inputKey.trim()) {
-      setErrorMsg('API 키를 입력해 주세요.')
+  async function verifyGemini() {
+    if (!geminiInput.trim()) {
+      setGeminiError('API 키를 입력해 주세요.')
+      setGeminiStatus('error')
       return
     }
-    setStatus('testing')
-    setErrorMsg('')
-
+    setGeminiStatus('testing')
+    setGeminiError('')
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gemini-Key': inputKey.trim(),
-        },
+        headers: { 'Content-Type': 'application/json', 'X-Gemini-Key': geminiInput.trim() },
         body: JSON.stringify({
           messages: [{ role: 'user', content: '안녕' }],
-          data: [],
           summary: '테스트',
+          columns: [],
+          sampleRows: [],
+          charts: [],
         }),
       })
-
       if (!res.ok) {
-        const json = await res.json()
+        const json = await res.json().catch(() => ({}))
         throw new Error(json.error ?? '키 검증 실패')
       }
-
-      setGeminiKey(inputKey.trim())
-      setStatus('ok')
-      setTimeout(() => router.push('/'), 1200)
+      // 스트림을 끝까지 읽어 검증 완료
+      await res.text()
+      setGeminiKey(geminiInput.trim())
+      setGeminiInput('')
+      setGeminiStatus('ok')
     } catch (err: unknown) {
-      setStatus('error')
-      setErrorMsg(err instanceof Error ? err.message : '키 검증 중 오류가 발생했습니다.')
+      setGeminiStatus('error')
+      setGeminiError(err instanceof Error ? err.message : '키 검증 중 오류가 발생했습니다.')
     }
-  }
-
-  function handleDelete() {
-    clearGeminiKey()
-    setInputKey('')
-    setStatus('idle')
-    setErrorMsg('')
-    setHasSavedKey(false)
   }
 
   return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-md w-full max-w-md p-8 space-y-6">
+      <div className="bg-white rounded-2xl shadow-md w-full max-w-lg p-8 space-y-7">
         <h1 className="text-2xl font-bold text-gray-800">⚙️ 설정</h1>
 
-        {/* 서울 공공API 안내 */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-          <p className="font-semibold mb-1">서울 공공 API</p>
-          <p>서울 열린데이터광장 API 키는 서버에서 자동으로 처리됩니다. 별도 입력이 필요하지 않습니다.</p>
-        </div>
-
-        {/* Gemini 키 입력 */}
-        <div className="space-y-3">
-          <label className="block text-sm font-semibold text-gray-700">
-            Gemini API 키
-          </label>
-          <input
-            type="password"
-            value={inputKey}
-            onChange={(e) => setInputKey(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-            placeholder="AIza..."
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-
-          {hasSavedKey && (
-            <p className="text-xs text-green-600">✅ 현재 저장된 키가 있습니다. 새 키를 입력하면 덮어씁니다.</p>
-          )}
-
-          {status === 'ok' && (
-            <p className="text-xs text-green-600">✅ 키 확인 완료! 메인 페이지로 이동합니다...</p>
-          )}
-          {status === 'error' && (
-            <p className="text-xs text-red-600">❌ {errorMsg}</p>
-          )}
-
-          <button
-            onClick={handleVerify}
-            disabled={status === 'testing'}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
-          >
-            {status === 'testing' ? '확인 중...' : '키 확인 및 저장'}
-          </button>
-
-          {hasSavedKey && (
-            <button
-              onClick={handleDelete}
-              className="w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-semibold py-2 rounded-lg text-sm transition-colors"
+        {/* 서울 OpenAPI 인증키 */}
+        <section className="space-y-3">
+          <label className="block text-sm font-semibold text-gray-700">① 서울 OpenAPI 인증키</label>
+          <p className="text-xs text-gray-500">
+            <a
+              href="https://data.seoul.go.kr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-blue-600"
             >
-              저장된 키 삭제
+              서울 열린데이터광장
+            </a>{' '}
+            → 인증키 신청에서 발급받은 일반 인증키를 입력하세요.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={seoulInput}
+              onChange={(e) => setSeoulInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && saveSeoul()}
+              placeholder={seoulKey ? '저장됨 · 새 키 입력 시 덮어쓰기' : '서울 OpenAPI 인증키'}
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={saveSeoul}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 rounded-lg text-sm"
+            >
+              저장
             </button>
+          </div>
+          {seoulKey && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-green-600">✅ 인증키가 저장되어 있습니다.</span>
+              <button onClick={clearSeoulKey} className="text-red-500 hover:underline">
+                삭제
+              </button>
+            </div>
           )}
-        </div>
+        </section>
+
+        <hr />
+
+        {/* Gemini API 키 */}
+        <section className="space-y-3">
+          <label className="block text-sm font-semibold text-gray-700">② Gemini API 키</label>
+          <p className="text-xs text-gray-500">
+            <a
+              href="https://aistudio.google.com/apikey"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-blue-600"
+            >
+              Google AI Studio
+            </a>
+            에서 발급받은 키를 입력하세요. (텍스트: gemini-3.1-flash-lite / 이미지: gemini-3.1-flash-image)
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={geminiInput}
+              onChange={(e) => setGeminiInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && verifyGemini()}
+              placeholder={geminiKey ? '저장됨 · 새 키 입력 시 덮어쓰기' : 'AIza...'}
+              className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              onClick={verifyGemini}
+              disabled={geminiStatus === 'testing'}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold px-4 rounded-lg text-sm whitespace-nowrap"
+            >
+              {geminiStatus === 'testing' ? '확인 중...' : '검증 후 저장'}
+            </button>
+          </div>
+          {geminiStatus === 'ok' && <p className="text-xs text-green-600">✅ 키 검증 완료! 저장되었습니다.</p>}
+          {geminiStatus === 'error' && <p className="text-xs text-red-600">❌ {geminiError}</p>}
+          {geminiKey && geminiStatus !== 'ok' && (
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-green-600">✅ Gemini 키가 저장되어 있습니다.</span>
+              <button onClick={clearGeminiKey} className="text-red-500 hover:underline">
+                삭제
+              </button>
+            </div>
+          )}
+        </section>
 
         {/* 보안 경고 */}
         <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 text-xs text-yellow-800 space-y-1">
           <p className="font-semibold">⚠️ 보안 주의사항</p>
-          <p>Gemini API 키는 이 기기의 브라우저에만 저장됩니다.</p>
-          <p className="font-semibold">공용 PC에서는 반드시 사용 후 키를 삭제하세요.</p>
+          <p>두 키 모두 서버에 저장되지 않고 이 기기의 브라우저(localStorage)에만 보관됩니다.</p>
+          <p className="font-semibold">공용 PC에서는 사용 후 반드시 키를 삭제하세요.</p>
         </div>
 
-        <button
-          onClick={() => router.push('/')}
-          className="text-sm text-gray-500 hover:text-gray-700 underline"
-        >
+        <button onClick={() => router.push('/')} className="text-sm text-gray-500 hover:text-gray-700 underline">
           ← 메인으로 돌아가기
         </button>
       </div>

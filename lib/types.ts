@@ -1,32 +1,62 @@
-// 서울시 학교 정보 데이터 타입 정의 (neisSchoolInfoJS API 기반)
+// 범용 서울 공공데이터 분석 도구 타입 정의
 
-export interface SchoolInfo {
-  STD_SCHL_CD: string        // 표준학교코드 (고유키)
-  SCHL_NM: string            // 학교명
-  ENG_SCHL_NM: string        // 영문학교명
-  SCHL_KND_NM: string        // 학교종류 (초등학교/중학교/고등학교 등)
-  FNDN_SE: string            // 설립구분 (공립/사립)
-  CMPTNC_OGNZ_NM: string     // 관할 교육지원청
-  LCTN_NM: string            // 소재지명
-  ROAD_NM_ADDR: string       // 도로명주소
-  DADDR: string              // 상세주소
-  TELNO: string              // 전화번호
-  HMPG_ADDR: string          // 홈페이지 URL
-  CEDU_SE_NM: string         // 남녀공학 여부
-  FNDN_YMD: string           // 설립일자 (YYYYMMDD)
-  INDST_SPC_CLAS_EXST_YN: string  // 산업특수학급 존재 여부 (Y/N)
-  CTPV_EDUO_NM: string       // 시도교육청명
-  LOAD_DT: string            // 데이터 갱신일자
+// API 응답의 한 행 (임의의 컬럼 구조)
+export type DataRow = Record<string, string | number>
+
+// 컬럼 추론 타입
+export type ColumnType = 'number' | 'date' | 'category' | 'text'
+
+// 컬럼 메타데이터 (자동 추론 결과)
+export interface ColumnMeta {
+  key: string
+  type: ColumnType
+  distinctCount: number
+  emptyCount: number
+  sampleValues: (string | number)[]
+  numericStats?: {
+    min: number
+    max: number
+    mean: number
+    sum: number
+  }
+}
+
+// 불러온 데이터셋 전체
+export interface Dataset {
+  serviceName: string // OpenAPI 서비스명 (예: tbLnOpendataRentV)
+  rows: DataRow[]
+  totalCount: number // list_total_count (전체 데이터 건수)
+  columns: ColumnMeta[]
+}
+
+// 차트 종류
+export type ChartType = 'bar' | 'line' | 'pie' | 'area' | 'scatter'
+
+// 집계 방식
+export type Aggregation = 'count' | 'sum' | 'avg' | 'min' | 'max'
+
+// 정렬 방식
+export type SortBy = 'value-desc' | 'value-asc' | 'category'
+
+// 차트 명세 (자동 생성 / AI 수정 / 사용자 수정 공통)
+export interface ChartSpec {
+  id: string
+  type: ChartType
+  title: string
+  categoryField: string // x축 / 그룹 기준 필드
+  valueField: string | null // 집계 대상 필드 (null이면 건수 count)
+  aggregation: Aggregation
+  topN: number // 상위 N개 카테고리만 표시 (0이면 전체)
+  sortBy: SortBy
+}
+
+// AI가 채팅 중 내보내는 차트 조작 명령
+export interface ChartAction extends ChartSpec {
+  action: 'add' | 'replace' | 'remove'
 }
 
 export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
-}
-
-export interface FilterState {
-  schoolName: string
-  schoolType: string
-  establishment: string
-  district: string
+  image?: string // base64 data URL (이미지 생성 결과)
 }
