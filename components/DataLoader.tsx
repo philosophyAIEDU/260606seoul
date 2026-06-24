@@ -26,13 +26,71 @@ export default function DataLoader({ onLoaded }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [debugUrl, setDebugUrl] = useState('')
+  const [diagnosing, setDiagnosing] = useState(false)
+  const [diag, setDiag] = useState('')
 
   const canLive = !!seoulKey && !!sampleUrl.trim()
   const canExample = !!example.trim()
 
+  // 인증키별로 소량(5건) 호출해 결과 확인
+  async function testFetch(key: string, rows: number) {
+    const res = await fetch('/api/fetch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sampleUrl: sampleUrl.trim(), maxRows: rows, seoulKey: key }),
+    })
+    const json = await res.json()
+    return {
+      ok: res.ok,
+      error: json.error as string | undefined,
+      count: (json.rows?.length as number | undefined) ?? 0,
+    }
+  }
+
+  // 연결 진단: sample 키 vs 내 인증키 → 키 문제인지 URL/서비스 문제인지 구분
+  async function runDiagnostics() {
+    if (!sampleUrl.trim()) {
+      setDiag('샘플 URL을 먼저 입력하세요.')
+      return
+    }
+    setDiagnosing(true)
+    setDiag('')
+    setError('')
+    try {
+      const sample = await testFetch('sample', 5)
+      const user = seoulKey ? await testFetch(seoulKey, 5) : null
+
+      const lines: string[] = []
+      lines.push(`· 공개 sample 키(5건): ${sample.ok ? `성공 (${sample.count}건)` : `실패 — ${sample.error}`}`)
+      if (user) lines.push(`· 내 인증키(5건): ${user.ok ? `성공 (${user.count}건)` : `실패 — ${user.error}`}`)
+      else lines.push('· 내 인증키: 미저장 (설정에서 입력 필요)')
+      lines.push('')
+
+      if (sample.ok && user?.ok) {
+        lines.push('✅ 결론: URL·서비스·키 모두 정상입니다. 전체 불러오기를 다시 시도하세요.')
+        lines.push('   (1,000건 요청이 막히면 최대 행 수를 줄여 보세요.)')
+      } else if (sample.ok && user && !user.ok) {
+        lines.push('🔑 결론: URL/서비스는 정상이나 내 인증키가 이 데이터에서 동작하지 않습니다.')
+        lines.push('   → 키 발급 직후라면 활성화에 시간이 걸립니다. "일반 인증키"가 맞는지,')
+        lines.push('     키 앞뒤 공백 없이 입력됐는지 설정에서 확인하세요.')
+      } else if (sample.ok && !user) {
+        lines.push('ℹ️ 결론: URL/서비스는 정상입니다. 설정에서 인증키를 입력한 뒤 다시 시도하세요.')
+      } else {
+        lines.push('🌐 결론: sample 키로도 실패했습니다. 샘플 URL의 서비스명/타입을 확인하세요.')
+        lines.push('   (해당 서비스가 sample 키 호출을 제한하는 경우도 있습니다.)')
+      }
+      setDiag(lines.join('\n'))
+    } catch (e) {
+      setDiag('진단 중 오류: ' + (e instanceof Error ? e.message : '알 수 없음'))
+    } finally {
+      setDiagnosing(false)
+    }
+  }
+
   async function handleLoad() {
     setError('')
     setDebugUrl('')
+    setDiag('')
     setLoading(true)
     try {
       // 방법 A: 인증키 + URL → 전체 데이터 호출
@@ -152,25 +210,41 @@ export default function DataLoader({ onLoaded }: Props) {
           )}
           {error.includes('ERROR-300') && (
             <p className="text-xs text-red-600">
-              👉 샘플 URL이 <code>.../인증키/타입/서비스명/시작/끝/</code> 형식인지, 인증키가 이 데이터셋용으로 발급된 것인지 확인하세요.
+              👉 URL 구조는 맞는데도 ERROR-300이면 인증키 문제일 가능성이 큽니다. 아래 <b>연결 진단</b>을 눌러 확인하세요.
             </p>
           )}
         </div>
       )}
 
-      <button
-        onClick={handleLoad}
-        disabled={loading}
-        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg text-sm transition-all"
-      >
-        {loading
-          ? '불러오는 중...'
-          : canLive
-            ? '전체 데이터 불러오기 & 자동 분석'
-            : canExample
-              ? '예제로 분석 (소량)'
-              : '데이터 불러오기 & 자동 분석'}
-      </button>
+      {diag && (
+        <div className="bg-slate-50 border border-slate-300 text-slate-700 rounded-lg px-3 py-2 text-xs whitespace-pre-wrap font-mono">
+          {diag}
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          onClick={handleLoad}
+          disabled={loading || diagnosing}
+          className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg text-sm transition-all"
+        >
+          {loading
+            ? '불러오는 중...'
+            : canLive
+              ? '전체 데이터 불러오기 & 자동 분석'
+              : canExample
+                ? '예제로 분석 (소량)'
+                : '데이터 불러오기 & 자동 분석'}
+        </button>
+        <button
+          onClick={runDiagnostics}
+          disabled={diagnosing || loading || !sampleUrl.trim()}
+          title="공개 sample 키와 내 인증키로 각각 호출해 원인을 진단합니다"
+          className="border rounded-lg px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 whitespace-nowrap"
+        >
+          {diagnosing ? '진단 중...' : '🔍 연결 진단'}
+        </button>
+      </div>
     </div>
   )
 }
