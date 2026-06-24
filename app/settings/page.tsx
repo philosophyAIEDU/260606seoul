@@ -31,13 +31,14 @@ export default function SettingsPage() {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gemini-Key': geminiInput.trim() },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [{ role: 'user', content: '안녕' }],
           summary: '테스트',
           columns: [],
           sampleRows: [],
           charts: [],
+          geminiKey: geminiInput.trim(),
         }),
       })
       if (!res.ok) {

@@ -1,5 +1,5 @@
 // Gemini 이미지 생성 라우트 (인포그래픽/시각 자료 생성)
-// - X-Gemini-Key 헤더로 사용자 키 수신 (서버 저장 안 함)
+// - 요청 본문(geminiKey)으로 사용자 키 수신 (서버 저장 안 함)
 // - 모델: gemini-3.1-flash-image
 // - 응답에서 inlineData(base64 이미지)를 추출해 data URL 로 반환
 
@@ -9,16 +9,16 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const geminiKey = request.headers.get('X-Gemini-Key')
-  if (!geminiKey) {
-    return NextResponse.json({ error: 'Gemini API 키가 필요합니다.' }, { status: 401 })
-  }
-
-  let body: { prompt?: string }
+  let body: { prompt?: string; geminiKey?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: '잘못된 요청 형식입니다.' }, { status: 400 })
+  }
+
+  const geminiKey = body.geminiKey?.trim()
+  if (!geminiKey) {
+    return NextResponse.json({ error: 'Gemini API 키가 필요합니다.' }, { status: 401 })
   }
 
   const prompt = body.prompt?.trim()

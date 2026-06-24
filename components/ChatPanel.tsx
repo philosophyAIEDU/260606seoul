@@ -85,13 +85,14 @@ export default function ChatPanel({ dataset, charts, onChartAction }: Props) {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gemini-Key': geminiKey },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: next,
           summary: buildDataSummary(dataset),
           columns: dataset.columns.map((c) => ({ key: c.key, type: c.type })),
           sampleRows: dataset.rows.slice(0, 30),
           charts: chartsRef.current,
+          geminiKey,
         }),
       })
 
@@ -140,8 +141,8 @@ Dataset summary:\n${buildDataSummary(dataset)}`
     try {
       const res = await fetch('/api/image', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Gemini-Key': geminiKey },
-        body: JSON.stringify({ prompt }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, geminiKey }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? '이미지 생성 실패')

@@ -1,5 +1,5 @@
 // Gemini AI 데이터 분석가 채팅 라우트
-// - X-Gemini-Key 헤더로 사용자 키 수신 (서버 저장 안 함)
+// - 요청 본문(geminiKey)으로 사용자 키 수신 (서버 저장 안 함)
 // - 데이터 요약 + 컬럼 정보 + 표본 행 + 현재 차트 명세를 근거로 분석
 // - 차트 생성/수정 요청 시 ```chart-spec JSON``` 블록을 함께 출력하도록 유도
 // - 스트리밍(text/plain) 응답. 모델: gemini-3.1-flash-lite
@@ -16,23 +16,24 @@ interface ChatBody {
   columns: { key: string; type: string }[]
   sampleRows: DataRow[]
   charts: ChartSpec[]
+  geminiKey?: string
 }
 
 export async function POST(request: NextRequest) {
-  const geminiKey = request.headers.get('X-Gemini-Key')
-  if (!geminiKey) {
-    return new Response(JSON.stringify({ error: 'Gemini API 키가 필요합니다.' }), {
-      status: 401,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   let body: ChatBody
   try {
     body = (await request.json()) as ChatBody
   } catch {
     return new Response(JSON.stringify({ error: '잘못된 요청 형식입니다.' }), {
       status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const geminiKey = body.geminiKey?.trim()
+  if (!geminiKey) {
+    return new Response(JSON.stringify({ error: 'Gemini API 키가 필요합니다.' }), {
+      status: 401,
       headers: { 'Content-Type': 'application/json' },
     })
   }
