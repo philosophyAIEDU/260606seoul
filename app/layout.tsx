@@ -1,21 +1,19 @@
-// 루트 레이아웃: GeminiKeyProvider로 전체 앱 래핑
+// 루트 레이아웃: KeysProvider로 전체 앱 래핑
 
 import type { Metadata } from 'next'
 import './globals.css'
-import { GeminiKeyProvider } from '@/lib/GeminiKeyContext'
+import { KeysProvider } from '@/lib/keys'
 
 export const metadata: Metadata = {
-  title: '서울시 학교 정보',
-  description: '서울 열린데이터광장 학교 정보 검색 및 AI 분석 서비스',
+  title: '서울 공공데이터 AI 분석',
+  description: '서울 열린데이터광장 OpenAPI를 시각화하고 AI 데이터 분석가와 대화하는 서비스',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
       <body className="antialiased">
-        <GeminiKeyProvider>
-          {children}
-        </GeminiKeyProvider>
+        <KeysProvider>{children}</KeysProvider>
       </body>
     </html>
   )
