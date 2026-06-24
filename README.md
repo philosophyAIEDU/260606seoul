@@ -76,12 +76,14 @@ npm run build && npm start
 
 ## 🔌 API
 
+> API 키는 HTTP 헤더가 아닌 **요청 본문(JSON)** 으로 전달합니다. (헤더는 ISO-8859-1만 허용)
+
 ### `POST /api/fetch`
-헤더 `X-Seoul-Key`, 바디 `{ sampleUrl, maxRows }` → `{ serviceName, rows, totalCount }`
+바디 `{ sampleUrl, maxRows, seoulKey }` → `{ serviceName, rows, totalCount }`
 
 ### `POST /api/chat`
-헤더 `X-Gemini-Key`, 바디 `{ messages, summary, columns, sampleRows, charts }` → 스트리밍 텍스트.
+바디 `{ messages, summary, columns, sampleRows, charts, geminiKey }` → 스트리밍 텍스트.
 AI는 차트 조작 시 ```` ```chart-spec {JSON} ``` ```` 블록을 함께 출력합니다.
 
 ### `POST /api/image`
-헤더 `X-Gemini-Key`, 바디 `{ prompt }` → `{ image: "data:image/...;base64,...", note? }`
+바디 `{ prompt, geminiKey }` → `{ image: "data:image/...;base64,...", note? }`

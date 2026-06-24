@@ -29,8 +29,8 @@ export default function DataLoader({ onLoaded }: Props) {
       if (seoulKey && sampleUrl.trim()) {
         const res = await fetch('/api/fetch', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Seoul-Key': seoulKey },
-          body: JSON.stringify({ sampleUrl: sampleUrl.trim(), maxRows }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sampleUrl: sampleUrl.trim(), maxRows, seoulKey }),
         })
         const json = await res.json()
         if (!res.ok) throw new Error(json.error ?? '데이터 호출 실패')

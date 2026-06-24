@@ -1,5 +1,6 @@
 // 범용 서울 열린데이터광장 OpenAPI 프록시 라우트
-// - 인증키는 클라이언트가 X-Seoul-Key 헤더로 전달 (서버에 저장하지 않음)
+// - 인증키는 클라이언트가 요청 본문(seoulKey)으로 전달 (서버에 저장하지 않음)
+//   ※ 헤더는 ISO-8859-1만 허용하므로 키는 본문으로 전송
 // - 샘플 URL을 받아 실제 호출 URL을 구성하고, CORS/HTTP 제약 없이 서버에서 호출
 // - 응답을 범용 파서로 처리해 { serviceName, rows, totalCount } 반환
 
@@ -9,16 +10,16 @@ import { buildRequestUrl, parseSeoulResponse } from '@/lib/analysis'
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
-  const seoulKey = request.headers.get('X-Seoul-Key')
-  if (!seoulKey) {
-    return NextResponse.json({ error: '서울 OpenAPI 인증키가 필요합니다.' }, { status: 401 })
-  }
-
-  let body: { sampleUrl?: string; maxRows?: number }
+  let body: { sampleUrl?: string; maxRows?: number; seoulKey?: string }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: '잘못된 요청 형식입니다.' }, { status: 400 })
+  }
+
+  const seoulKey = body.seoulKey?.trim()
+  if (!seoulKey) {
+    return NextResponse.json({ error: '서울 OpenAPI 인증키가 필요합니다.' }, { status: 401 })
   }
 
   const { sampleUrl, maxRows } = body
