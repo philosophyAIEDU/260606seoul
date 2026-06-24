@@ -10,6 +10,7 @@ import DataLoader from '@/components/DataLoader'
 import DynamicChart from '@/components/DynamicChart'
 import DataTable from '@/components/DataTable'
 import ChatPanel from '@/components/ChatPanel'
+import InsightsPanel from '@/components/InsightsPanel'
 
 export default function HomePage() {
   const { seoulKey, geminiKey } = useKeys()
@@ -119,6 +120,7 @@ export default function HomePage() {
             {/* 본문: 좌측 차트/테이블, 우측 AI 채팅 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
+                <InsightsPanel dataset={dataset} />
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-bold text-gray-800">📈 자동 생성 차트</h2>
                   <button

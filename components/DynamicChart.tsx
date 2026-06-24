@@ -7,7 +7,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
 import { ChartSpec, ColumnMeta, DataRow, ChartType, Aggregation, SortBy } from '@/lib/types'
-import { computeChartData } from '@/lib/analysis'
+import { computeChartData, truncateLabel } from '@/lib/analysis'
 
 const COLORS = [
   '#3b82f6', '#f97316', '#10b981', '#8b5cf6', '#ef4444', '#14b8a6',
@@ -28,6 +28,7 @@ export default function DynamicChart({ spec, rows, columns, onChange, onRemove, 
   const data = useMemo(() => computeChartData(rows, spec), [rows, spec])
 
   const numericFields = columns.filter((c) => c.type === 'number').map((c) => c.key)
+  const categoryIsNumeric = columns.find((c) => c.key === spec.categoryField)?.type === 'number'
 
   function patch(p: Partial<ChartSpec>) {
     onChange({ ...spec, ...p })
@@ -145,6 +146,19 @@ export default function DynamicChart({ spec, rows, columns, onChange, onRemove, 
               <option value="category">이름순</option>
             </select>
           </label>
+          {categoryIsNumeric && (
+            <label className="col-span-2 flex flex-col gap-1">
+              <span className="text-gray-500">구간(히스토그램) 개수 · 0이면 끔</span>
+              <input
+                type="number"
+                min={0}
+                max={30}
+                value={spec.bins ?? 0}
+                onChange={(e) => patch({ bins: parseInt(e.target.value, 10) || 0 })}
+                className="border rounded px-2 py-1"
+              />
+            </label>
+          )}
         </div>
       )}
 
@@ -173,8 +187,8 @@ function renderChart(type: ChartType, data: { name: string; value: number }[]) {
           nameKey="name"
           cx="50%"
           cy="50%"
-          outerRadius={95}
-          label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+          outerRadius={90}
+          label={({ name, percent }) => `${truncateLabel(String(name), 8)} ${((percent ?? 0) * 100).toFixed(0)}%`}
         >
           {data.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -190,7 +204,7 @@ function renderChart(type: ChartType, data: { name: string; value: number }[]) {
     return (
       <LineChart data={data} margin={margin}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} tickFormatter={(v) => truncateLabel(v)} height={70} />
         <YAxis tick={{ fontSize: 11 }} />
         <Tooltip />
         <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={false} />
@@ -202,7 +216,7 @@ function renderChart(type: ChartType, data: { name: string; value: number }[]) {
     return (
       <AreaChart data={data} margin={margin}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} tickFormatter={(v) => truncateLabel(v)} height={70} />
         <YAxis tick={{ fontSize: 11 }} />
         <Tooltip />
         <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="#93c5fd" />
@@ -214,7 +228,7 @@ function renderChart(type: ChartType, data: { name: string; value: number }[]) {
     return (
       <ScatterChart margin={margin}>
         <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-40} textAnchor="end" interval={0} tickFormatter={(v) => truncateLabel(v)} height={70} />
         <YAxis dataKey="value" tick={{ fontSize: 11 }} />
         <Tooltip />
         <Scatter data={data} fill="#3b82f6" />
