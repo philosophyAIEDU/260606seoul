@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ChartAction, ChartSpec, Dataset } from '@/lib/types'
 import { newChartId, suggestCharts } from '@/lib/analysis'
 import { useKeys, KeyGuard } from '@/lib/keys'
-import DataLoader from '@/components/DataLoader'
+import DataLoader, { LoadMeta } from '@/components/DataLoader'
 import DynamicChart from '@/components/DynamicChart'
 import DataTable from '@/components/DataTable'
 import ChatPanel from '@/components/ChatPanel'
@@ -16,9 +16,11 @@ export default function HomePage() {
   const { seoulKey, geminiKey } = useKeys()
   const [dataset, setDataset] = useState<Dataset | null>(null)
   const [charts, setCharts] = useState<ChartSpec[]>([])
+  const [loadMeta, setLoadMeta] = useState<LoadMeta | null>(null)
 
-  function handleLoaded(ds: Dataset) {
+  function handleLoaded(ds: Dataset, meta: LoadMeta) {
     setDataset(ds)
+    setLoadMeta(meta)
     setCharts(suggestCharts(ds.columns))
   }
 
@@ -110,12 +112,15 @@ export default function HomePage() {
                 onClick={() => {
                   setDataset(null)
                   setCharts([])
+                  setLoadMeta(null)
                 }}
                 className="text-sm border rounded-lg px-3 py-2 text-gray-600 hover:bg-gray-50"
               >
                 ↻ 다른 데이터 불러오기
               </button>
             </div>
+
+            <CoverageBanner dataset={dataset} meta={loadMeta} hasKey={!!seoulKey} />
 
             {/* 본문: 좌측 차트/테이블, 우측 AI 채팅 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -165,6 +170,55 @@ export default function HomePage() {
   )
 }
 
+// 분석 커버리지 안내: 전체 건수 대비 몇 건을 분석 중인지 + 더 불러오는 방법
+function CoverageBanner({
+  dataset,
+  meta,
+  hasKey,
+}: {
+  dataset: Dataset
+  meta: LoadMeta | null
+  hasKey: boolean
+}) {
+  const loaded = dataset.rows.length
+  const total = dataset.totalCount
+
+  // 예제로 소량만 분석한 경우 (가장 흔한 함정)
+  if (meta?.source === 'example') {
+    return (
+      <div className="bg-amber-50 border border-amber-300 text-amber-800 rounded-lg px-4 py-3 text-sm">
+        ⚠️ <b>예제 {loaded.toLocaleString()}건</b>만 분석 중입니다
+        {total > loaded && <> (전체 {total.toLocaleString()}건).</>}{' '}
+        전체 데이터를 분석하려면 <b>방법 A</b>로 다시 불러오세요:{' '}
+        {hasKey ? (
+          <>“다른 데이터 불러오기” → <b>샘플 URL</b> 칸에 URL 입력 후 “전체 데이터 불러오기”.</>
+        ) : (
+          <>
+            <Link href="/settings" className="underline font-semibold">설정에서 인증키</Link>를 입력한 뒤 샘플 URL로 불러오세요.
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // 실데이터지만 API 1회 상한(1,000)으로 일부만 가져온 경우
+  if (meta?.source === 'live' && total > loaded) {
+    return (
+      <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-4 py-3 text-sm">
+        ℹ️ 서울 API는 1회 최대 1,000건까지만 제공하여, 전체 {total.toLocaleString()}건 중{' '}
+        <b>{loaded.toLocaleString()}건</b>을 분석 중입니다. (대표 표본 기준 분석)
+      </div>
+    )
+  }
+
+  // 전량 분석
+  return (
+    <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg px-4 py-3 text-sm">
+      ✅ 전체 {total.toLocaleString()}건을 모두 불러와 분석 중입니다.
+    </div>
+  )
+}
+
 function SummaryCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="bg-white rounded-xl border shadow-sm px-5 py-3">
@@ -178,8 +232,8 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 function HowItWorks() {
   const steps = [
     ['1', '인증키 입력', '설정에서 서울 OpenAPI 인증키와 Gemini API 키를 입력합니다.'],
-    ['2', '샘플 URL · 예제 붙여넣기', '분석할 데이터의 샘플 URL과 예제 응답을 붙여넣습니다.'],
-    ['3', '자동 시각화', '컬럼을 자동 분석해 차트와 표를 생성합니다.'],
+    ['2', '샘플 URL 붙여넣기 (권장)', '방법 A에 샘플 URL을 넣으면 전체 데이터(최대 1,000건)를 불러옵니다.'],
+    ['3', '자동 시각화', '컬럼을 자동 분석해 인사이트·차트·표를 생성합니다.'],
     ['4', 'AI 분석가와 대화', 'AI에게 질문하고 “~를 차트로 만들어줘”로 그래프를 수정합니다.'],
   ]
   return (
