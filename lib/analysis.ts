@@ -380,31 +380,61 @@ export function buildDataSummary(dataset: Dataset): string {
 
 // ───────────────────────────── 요청 URL 생성 ─────────────────────────────
 
+const OPENAPI_TYPES = ['json', 'xml', 'xls']
+
 // 사용자가 붙여넣은 샘플 URL + 인증키 + 최대 행수 → 실제 호출 URL
+// 표준 형식: http://openapi.seoul.go.kr:8088/{인증키}/{TYPE}/{서비스}/{시작}/{끝}/[필터...]
 // 예: http://openapi.seoul.go.kr:8088/(인증키)/xml/tbLnOpendataRentV/1/5/
+//
+// 붙여넣은 URL이 표준에서 조금 달라도(키 자리 누락, 타입 누락 등) 동작하도록 보정합니다.
 export function buildRequestUrl(sampleUrl: string, apiKey: string, maxRows = 1000): string {
   const trimmed = sampleUrl.trim()
-  const marker = trimmed.match(/openapi\.seoul\.go\.kr:8088\//i)
-  if (!marker) {
+  if (!/openapi\.seoul\.go\.kr:8088\//i.test(trimmed)) {
     throw new Error('서울 열린데이터광장 샘플 URL 형식이 아닙니다. (openapi.seoul.go.kr:8088 포함 필요)')
   }
 
   const idx = trimmed.indexOf('8088/') + '8088/'.length
-  const path = trimmed.slice(idx)
-  const parts = path.split('/').filter((p, i, arr) => p !== '' || i === arr.length - 1)
-  // parts: [KEY, TYPE, SERVICE, START, END, ...extra]
-  if (parts.length < 3) {
-    throw new Error('샘플 URL에서 서비스 정보를 추출할 수 없습니다.')
+  let path = trimmed.slice(idx)
+  // 쿼리스트링 제거
+  const qIdx = path.indexOf('?')
+  if (qIdx >= 0) path = path.slice(0, qIdx)
+
+  // 세그먼트 분리: 각 항목 trim, 빈 세그먼트(중복/후행 슬래시) 제거
+  const segs = path
+    .split('/')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+
+  if (segs.length === 0) {
+    throw new Error('샘플 URL에서 경로를 추출할 수 없습니다.')
   }
 
-  parts[0] = apiKey.trim() // 인증키 치환
-  // TYPE: json/xml 둘 다 파서가 처리하므로 그대로 두되, 누락 시 json
-  if (!parts[1]) parts[1] = 'json'
-  // START / END 를 1 / maxRows 로 확장
-  if (parts.length >= 4) parts[3] = '1'
-  else parts.push('1')
-  if (parts.length >= 5) parts[4] = String(maxRows)
-  else parts.push(String(maxRows))
+  // 첫 세그먼트가 타입(json/xml/xls)이면 인증키 자리가 누락된 것 → 앞에 키 자리 삽입
+  if (OPENAPI_TYPES.includes(segs[0].toLowerCase())) {
+    segs.unshift('')
+  }
 
-  return `http://openapi.seoul.go.kr:8088/${parts.join('/')}`
+  // 이제 [0]=KEY, [1]=TYPE, [2]=SERVICE, [3]=START, [4]=END, [5...]=필터
+  segs[0] = apiKey.trim() // 인증키 치환
+
+  // TYPE 보정: 비었거나 유효 타입이 아니면 json 삽입
+  if (!segs[1] || !OPENAPI_TYPES.includes(segs[1].toLowerCase())) {
+    segs.splice(1, 0, 'json')
+  }
+
+  if (!segs[2]) {
+    throw new Error('샘플 URL에서 서비스명을 찾을 수 없습니다.')
+  }
+
+  // START / END 를 1 / maxRows 로 강제
+  segs[3] = '1'
+  segs[4] = String(maxRows)
+
+  return `http://openapi.seoul.go.kr:8088/${segs.join('/')}/`
+}
+
+// 인증키를 가린 URL (에러 메시지/디버깅용)
+export function redactUrl(url: string, apiKey: string): string {
+  if (!apiKey) return url
+  return url.split(apiKey).join('***')
 }

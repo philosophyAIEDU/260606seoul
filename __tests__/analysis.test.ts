@@ -132,6 +132,33 @@ describe('buildRequestUrl', () => {
     expect(url).toBe('http://openapi.seoul.go.kr:8088/MYKEY/xml/tbLnOpendataRentV/1/1000/')
   })
 
+  test('후행 슬래시 없는 URL도 처리', () => {
+    const url = buildRequestUrl(
+      'http://openapi.seoul.go.kr:8088/(인증키)/json/tbLnOpendataRentV/1/5',
+      'MYKEY',
+      500,
+    )
+    expect(url).toBe('http://openapi.seoul.go.kr:8088/MYKEY/json/tbLnOpendataRentV/1/500/')
+  })
+
+  test('인증키 자리가 누락된 URL 보정', () => {
+    const url = buildRequestUrl(
+      'http://openapi.seoul.go.kr:8088/xml/tbLnOpendataRentV/1/5/',
+      'MYKEY',
+      1000,
+    )
+    expect(url).toBe('http://openapi.seoul.go.kr:8088/MYKEY/xml/tbLnOpendataRentV/1/1000/')
+  })
+
+  test('필터 파라미터 보존', () => {
+    const url = buildRequestUrl(
+      'http://openapi.seoul.go.kr:8088/(인증키)/xml/tbLnOpendataRentV/1/5/2026/',
+      'MYKEY',
+      1000,
+    )
+    expect(url).toBe('http://openapi.seoul.go.kr:8088/MYKEY/xml/tbLnOpendataRentV/1/1000/2026/')
+  })
+
   test('서울 API URL이 아니면 예외', () => {
     expect(() => buildRequestUrl('http://example.com/foo', 'K')).toThrow()
   })

@@ -5,7 +5,7 @@
 // - 응답을 범용 파서로 처리해 { serviceName, rows, totalCount } 반환
 
 import { NextRequest, NextResponse } from 'next/server'
-import { buildRequestUrl, parseSeoulResponse } from '@/lib/analysis'
+import { buildRequestUrl, parseSeoulResponse, redactUrl } from '@/lib/analysis'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,11 +37,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 400 })
   }
 
+  const safeUrl = redactUrl(requestUrl, seoulKey)
+
   try {
     const res = await fetch(requestUrl, { cache: 'no-store' })
     if (!res.ok) {
       return NextResponse.json(
-        { error: `서울 API 호출 실패: HTTP ${res.status}` },
+        { error: `서울 API 호출 실패: HTTP ${res.status}`, requestUrl: safeUrl },
         { status: 502 },
       )
     }
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (parsed.rows.length === 0) {
       return NextResponse.json(
-        { error: '데이터가 비어 있습니다. URL 또는 인증키를 확인해 주세요.' },
+        { error: '데이터가 비어 있습니다. URL 또는 인증키를 확인해 주세요.', requestUrl: safeUrl },
         { status: 422 },
       )
     }
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(parsed)
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류'
-    return NextResponse.json({ error: message }, { status: 400 })
+    // ERROR-300 등 서울 API 오류 시 실제 호출 URL(키 가림)을 함께 안내
+    return NextResponse.json({ error: message, requestUrl: safeUrl }, { status: 400 })
   }
 }
