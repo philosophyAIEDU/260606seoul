@@ -4,6 +4,7 @@ import {
   parseSeoulResponse,
   inferColumns,
   computeChartData,
+  suggestCharts,
   buildRequestUrl,
   toNumber,
 } from '../lib/analysis'
@@ -79,6 +80,45 @@ describe('inferColumns', () => {
     expect(gtn?.numericStats?.sum).toBe(90000)
     expect(cgg?.type).toBe('category')
     expect(cgg?.distinctCount).toBe(2)
+  })
+
+  test('긴 자유텍스트/고유 식별자는 카테고리가 아닌 text로 분류', () => {
+    const rows = [
+      { N_SEQ: '1', N_TITLE: '환경 미화원의 1,000원 세상을 따뜻하게 하다', N_VIEW: '282' },
+      { N_SEQ: '2', N_TITLE: '혼동하기 쉬운 물가용어 알아보기(소비자물가지수, 생활물가지수)', N_VIEW: '19' },
+      { N_SEQ: '3', N_TITLE: '허준 박물관 개관 7주년을 맞이하여 기념행사를 개최합니다', N_VIEW: '366' },
+      { N_SEQ: '4', N_TITLE: '함께 걸어요 (3월 24일)', N_VIEW: '297' },
+      { N_SEQ: '5', N_TITLE: '학교 밖 청소년들 서울로7017에서 일일장터 연다', N_VIEW: '281' },
+    ]
+    const cols = inferColumns(rows)
+    const title = cols.find((c) => c.key === 'N_TITLE')
+    const seq = cols.find((c) => c.key === 'N_SEQ')
+    const view = cols.find((c) => c.key === 'N_VIEW')
+    expect(title?.type).toBe('text') // 카테고리로 쓰이면 안 됨
+    expect(seq?.isLikelyId).toBe(true) // 일련번호는 식별자
+    expect(view?.type).toBe('number')
+  })
+})
+
+describe('suggestCharts', () => {
+  test('식별자/자유텍스트를 카테고리 축으로 쓰지 않는다', () => {
+    const rows = [
+      { N_SEQ: '1', N_TITLE: '환경 미화원의 1,000원 세상을 따뜻하게 하다', N_VIEW: '282' },
+      { N_SEQ: '2', N_TITLE: '혼동하기 쉬운 물가용어 알아보기', N_VIEW: '19' },
+      { N_SEQ: '3', N_TITLE: '허준 박물관 개관 7주년 기념행사', N_VIEW: '366' },
+      { N_SEQ: '4', N_TITLE: '함께 걸어요', N_VIEW: '297' },
+      { N_SEQ: '5', N_TITLE: '학교 밖 청소년 일일장터', N_VIEW: '281' },
+    ]
+    const cols = inferColumns(rows)
+    const specs = suggestCharts(cols)
+    expect(specs.length).toBeGreaterThan(0)
+    // count 집계의 categoryField로 식별자가 쓰이면 안 됨
+    const badCount = specs.find(
+      (s) => s.aggregation === 'count' && !s.bins && (s.categoryField === 'N_SEQ' || s.categoryField === 'N_TITLE'),
+    )
+    expect(badCount).toBeUndefined()
+    // 숫자 분포(히스토그램) 차트가 포함되어야 함
+    expect(specs.some((s) => (s.bins ?? 0) > 0)).toBe(true)
   })
 })
 

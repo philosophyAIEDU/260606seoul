@@ -51,9 +51,9 @@ function stripChartSpecs(text: string): string {
 }
 
 const SUGGESTED = [
-  '이 데이터의 핵심 특징을 요약해줘',
-  '가장 의미 있는 패턴을 차트로 만들어줘',
-  '평균값을 막대 그래프로 보여줘',
+  '이 데이터의 핵심 인사이트 3가지를 수치 근거와 함께 알려줘',
+  '가장 의미 있는 패턴을 찾아 차트로 만들어줘',
+  '상위/하위 항목과 이상치를 짚어줘',
 ]
 
 export default function ChatPanel({ dataset, charts, onChartAction }: Props) {

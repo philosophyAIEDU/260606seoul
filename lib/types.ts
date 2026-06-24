@@ -12,11 +12,15 @@ export interface ColumnMeta {
   type: ColumnType
   distinctCount: number
   emptyCount: number
+  uniqueRatio: number // 고유값 / 비어있지 않은 값 (1에 가까우면 식별자/자유텍스트)
+  avgLength: number // 평균 문자열 길이
+  isLikelyId: boolean // 행마다 (거의) 고유한 식별자성 컬럼 (그룹/지표 대상 부적합)
   sampleValues: (string | number)[]
   numericStats?: {
     min: number
     max: number
     mean: number
+    median: number
     sum: number
   }
 }
@@ -48,6 +52,7 @@ export interface ChartSpec {
   aggregation: Aggregation
   topN: number // 상위 N개 카테고리만 표시 (0이면 전체)
   sortBy: SortBy
+  bins?: number // 0보다 크면 categoryField(숫자)를 균등 구간으로 나눠 히스토그램 표시
 }
 
 // AI가 채팅 중 내보내는 차트 조작 명령
