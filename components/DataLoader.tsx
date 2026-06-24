@@ -20,9 +20,11 @@ export default function DataLoader({ onLoaded }: Props) {
   const [maxRows, setMaxRows] = useState(1000)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [debugUrl, setDebugUrl] = useState('')
 
   async function handleLoad() {
     setError('')
+    setDebugUrl('')
     setLoading(true)
     try {
       // 1) 인증키 + URL → 실데이터 호출
@@ -33,7 +35,19 @@ export default function DataLoader({ onLoaded }: Props) {
           body: JSON.stringify({ sampleUrl: sampleUrl.trim(), maxRows, seoulKey }),
         })
         const json = await res.json()
-        if (!res.ok) throw new Error(json.error ?? '데이터 호출 실패')
+        if (!res.ok) {
+          if (json.requestUrl) setDebugUrl(json.requestUrl)
+          // 실데이터 호출 실패 시, 예제가 있으면 예제 파싱으로 폴백
+          if (example.trim()) {
+            const parsed = parseSeoulResponse(example.trim())
+            if (parsed.rows.length > 0) {
+              onLoaded(buildDataset(parsed))
+              setError(`실데이터 호출 실패(${json.error ?? '오류'}) → 붙여넣은 예제로 분석합니다.`)
+              return
+            }
+          }
+          throw new Error(json.error ?? '데이터 호출 실패')
+        }
         onLoaded(buildDataset(json))
         return
       }
@@ -110,8 +124,18 @@ export default function DataLoader({ onLoaded }: Props) {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm">
-          ❌ {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2 text-sm space-y-1">
+          <p>❌ {error}</p>
+          {debugUrl && (
+            <p className="text-xs text-red-500 break-all font-mono">
+              실제 호출 URL(키 가림): {debugUrl}
+            </p>
+          )}
+          {error.includes('ERROR-300') && (
+            <p className="text-xs text-red-600">
+              👉 샘플 URL이 <code>.../인증키/타입/서비스명/시작/끝/</code> 형식인지, 인증키가 이 데이터셋용으로 발급된 것인지 확인하세요.
+            </p>
+          )}
         </div>
       )}
 
